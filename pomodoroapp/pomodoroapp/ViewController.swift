@@ -9,7 +9,6 @@
 import UIKit
 
 class ViewController: UIViewController, CAAnimationDelegate {
-
     
     @IBOutlet weak var timeLabel: UILabel!
     @IBOutlet weak var startButton: UIButton!
@@ -19,33 +18,31 @@ class ViewController: UIViewController, CAAnimationDelegate {
     let foreProgressLayer = CAShapeLayer()
     let backProgressLayer = CAShapeLayer()
     let animatation = CABasicAnimation(keyPath: "strokeEnd")
-    
     var isAnimationStarted = false
     
     var timer = Timer()
     var isTimerStarted = false
-    var time = 1500
+    var time = 60
     
     override func viewDidLoad() {
         super.viewDidLoad()
         drawBackLayer()
-        // Do any additional setup after loading the view, typically from a nib.
+        timeLabel.text = "1:00"
     }
 
     
     @IBAction func startButtonTapped(_ sender: Any) {
         cancelButton.isEnabled = true
-        cancelButton.alpha = 1.0
+        cancelButton.alpha = 1.0 //最初は少し暗いけどスタート押したら通常の濃さで表示される
+        
         if !isTimerStarted{
-            drawForeLayer() //アニメーション
+            drawForeLayer() //アニメーション。前の赤い方の円を描く
             startResumedAnimation() //アニメーションの処理
             startTimer()
             isTimerStarted = true
             startButton.setTitle("Pause", for: .normal)
             startButton.setTitleColor(UIColor.orange, for: .normal)
-            
-            
-        }else {
+        } else {
             pauseAnimation() //Animation
             timer.invalidate()
             isTimerStarted = false
@@ -57,15 +54,15 @@ class ViewController: UIViewController, CAAnimationDelegate {
 
     @IBAction func cancelButtonTapped(_ sender: Any) {
         //fix when cancel tapped start button text reset
-        stopAnimation()
+        stopAnimation() //アニメーションを止める
         cancelButton.isEnabled = false
         cancelButton.alpha = 0.5
         startButton.setTitle("Start", for: .normal)
         startButton.setTitleColor(.green, for: .normal)
         timer.invalidate()
-        time = 1500
+        time = 60
         isTimerStarted = false
-        timeLabel.text = "25:00"
+        timeLabel.text = "1:00"
     }
     
     func startTimer(){
@@ -73,15 +70,15 @@ class ViewController: UIViewController, CAAnimationDelegate {
     }
     
    @objc func updateTimer(){
-    if time < 1 {
+    if time < 1 { //0になったら
         cancelButton.isEnabled = false
         cancelButton.alpha = 0.5
         startButton.setTitle("Start", for: .normal)
         startButton.setTitleColor(.green, for: .normal)
         timer.invalidate()
-        time = 1500
+        time = 60
         isTimerStarted = false
-        timeLabel.text = "25:00"
+        timeLabel.text = "1:00"
     } else {
         time -= 1
         timeLabel.text = formatTime()
@@ -93,33 +90,29 @@ class ViewController: UIViewController, CAAnimationDelegate {
         let minutes = Int(time) / 60 % 60
         let seconds = Int(time) % 60
         return String(format:"%02i:%02i", minutes, seconds)
-        
     }
     
-    //後ろの円
+    //後ろの白い縁の円
     func drawBackLayer(){
         //円を描いている
         backProgressLayer.path = UIBezierPath(arcCenter: CGPoint(x: view.frame.midX, y: view.frame.midY),
-                                              radius: 100,
+                                              radius: 120,
                                               startAngle: -90.degreesToRadians,
                                               endAngle: 270.degreesToRadians,
                                               clockwise: true).cgPath
-        //その他
-        backProgressLayer.strokeColor = UIColor.white.cgColor
-        backProgressLayer.fillColor = UIColor.clear.cgColor
-        backProgressLayer.lineWidth = 15
+        backProgressLayer.strokeColor = UIColor.white.cgColor //円の縁の色
+        backProgressLayer.lineWidth = 15 //円の縁の太さ
+        backProgressLayer.fillColor = UIColor.clear.cgColor //円の内側の色
         view.layer.addSublayer(backProgressLayer)
     }
     
-    //前の円
+    //前の、赤の、動く方の円
     func drawForeLayer(){
-        //円を描いている
         foreProgressLayer.path = UIBezierPath(arcCenter: CGPoint(x: view.frame.midX, y: view.frame.midY),
-                                              radius: 100,
+                                              radius: 120,
                                               startAngle: -90.degreesToRadians,
                                               endAngle: 270.degreesToRadians,
                                               clockwise: true).cgPath
-        //その他
         foreProgressLayer.strokeColor = UIColor.red.cgColor
         foreProgressLayer.fillColor = UIColor.clear.cgColor
         foreProgressLayer.lineWidth = 15
@@ -127,21 +120,23 @@ class ViewController: UIViewController, CAAnimationDelegate {
     }
     
     func startResumedAnimation(){
+//        Startを押したときにタイマーが走っていない時に発動→animationが始まっていたらresumeでまだだったらstartが発火
+//        ※timerStartedとanimeStartedをごっちゃにしない
         if !isAnimationStarted {
             startAnimation()
         } else {
-            resumeAnimation()
+            resumeAnimation() //Pauseボタンを押すと再びアニメーションがスタート
         }
     }
     
     func startAnimation(){
-        resetAnimation()
+        resetAnimation() //内部的に一旦リセットしてanimationをスタートさせる
         foreProgressLayer.strokeEnd = 0.0 //0からスタート
         animatation.keyPath = "strokeEnd"
         animatation.fromValue = 0
         animatation.toValue = 1 //0から1
-        animatation.duration = 1500
-        animatation.delegate = self
+        animatation.duration = 60
+        animatation.delegate = self //追記。これがないとanimationDidStop内の関数(0になったらforeProgressLayerを消すやつ)が発火しない
 //        ここから
         animatation.isRemovedOnCompletion = false
         animatation.isAdditive = true
@@ -149,8 +144,6 @@ class ViewController: UIViewController, CAAnimationDelegate {
 //        ここまでよくわからん
         foreProgressLayer.add(animatation, forKey: "strokeEnd")
         isAnimationStarted = true
-        
-        
     }
     
     func resetAnimation(){
@@ -161,22 +154,22 @@ class ViewController: UIViewController, CAAnimationDelegate {
         isAnimationStarted = false
     }
     
-    func pauseAnimation(){
+    func pauseAnimation(){ //タイマー走っている&&start(pause)が押されて発動
         let pausedTime = foreProgressLayer.convertTime(CACurrentMediaTime(), from: nil)
-        foreProgressLayer.speed = 0.0
+        foreProgressLayer.speed = 0.0 //0でないと赤い部分がなくなって再スタートでまた最初から赤がスタートする
         foreProgressLayer.timeOffset = pausedTime
     }
     
-    func resumeAnimation(){
-        let pausedTime = foreProgressLayer.timeOffset //?
-        foreProgressLayer.speed = 1.0
+    func resumeAnimation(){ //Startを押した時にtimerは走っていない&&アニメはスタートしてる
+        let pausedTime = foreProgressLayer.timeOffset // pauseAnimationでpausedTimeを代入したforeProgressLayer.timeOffset???
+        foreProgressLayer.speed = 1.0 //2.0だと再スタートした際に赤アニメーションが最初からになる
         foreProgressLayer.timeOffset = 0.0 //?
-        foreProgressLayer.beginTime = 0.0
-        let timeSincePaused = foreProgressLayer.convertTime(CACurrentMediaTime(), from: nil) - pausedTime
-        foreProgressLayer.beginTime = timeSincePaused
+        foreProgressLayer.beginTime = 0.0//一旦リセットして次で再設定?
+        let timeSincePaused = foreProgressLayer.convertTime(CACurrentMediaTime(), from: nil) - pausedTime 
+        foreProgressLayer.beginTime = timeSincePaused //停止したところからスタート?
     }
     
-    func stopAnimation(){
+    func stopAnimation(){  //cancelボタンを押した時とanimationDidStopのとき
         foreProgressLayer.speed = 1.0
         foreProgressLayer.timeOffset = 0.0 //?
         foreProgressLayer.beginTime = 0.0
@@ -186,6 +179,7 @@ class ViewController: UIViewController, CAAnimationDelegate {
     }
     
     //これを追加したらタイマー残り0の時に赤い部分が消える?? startAnimationにdelegate追加
+    //
     internal func animationDidStop(_ anim: CAAnimation, finished flag: Bool) {
         stopAnimation()
     }
@@ -194,5 +188,7 @@ class ViewController: UIViewController, CAAnimationDelegate {
 extension Int{
     var degreesToRadians : CGFloat{
         return CGFloat(self) * .pi/180
+//        角度(CGFloat(self))を扇形の弧の長さに変換する拡張
+//        https://juken-mikata.net/how-to/mathematics/radian.html
     }
 }
