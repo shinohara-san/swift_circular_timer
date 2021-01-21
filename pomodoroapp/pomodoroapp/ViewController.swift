@@ -29,7 +29,7 @@ class ViewController: UIViewController, CAAnimationDelegate {
         drawBackLayer()
         timeLabel.text = "1:00"
     }
-
+    
     
     @IBAction func startButtonTapped(_ sender: Any) {
         cancelButton.isEnabled = true
@@ -51,7 +51,7 @@ class ViewController: UIViewController, CAAnimationDelegate {
         }
     }
     
-
+    
     @IBAction func cancelButtonTapped(_ sender: Any) {
         //fix when cancel tapped start button text reset
         stopAnimation() //アニメーションを止める
@@ -69,21 +69,21 @@ class ViewController: UIViewController, CAAnimationDelegate {
         timer = Timer.scheduledTimer(timeInterval: 1, target: self, selector: (#selector(updateTimer)), userInfo: nil, repeats: true)
     }
     
-   @objc func updateTimer(){
-    if time < 1 { //0になったら
-        cancelButton.isEnabled = false
-        cancelButton.alpha = 0.5
-        startButton.setTitle("Start", for: .normal)
-        startButton.setTitleColor(.green, for: .normal)
-        timer.invalidate()
-        time = 60
-        isTimerStarted = false
-        timeLabel.text = "1:00"
-    } else {
-        time -= 1
-        timeLabel.text = formatTime()
-    }
-    
+    @objc func updateTimer(){
+        if time < 1 { //0になったら
+            cancelButton.isEnabled = false
+            cancelButton.alpha = 0.5
+            startButton.setTitle("Start", for: .normal)
+            startButton.setTitleColor(.green, for: .normal)
+            timer.invalidate()
+            time = 60
+            isTimerStarted = false
+            timeLabel.text = "1:00"
+        } else {
+            time -= 1
+            timeLabel.text = formatTime()
+        }
+        
     }
     
     func formatTime()->String{
@@ -120,8 +120,8 @@ class ViewController: UIViewController, CAAnimationDelegate {
     }
     
     func startResumedAnimation(){
-//        Startを押したときにタイマーが走っていない時に発動→animationが始まっていたらresumeでまだだったらstartが発火
-//        ※timerStartedとanimeStartedをごっちゃにしない
+        //        Startを押したときにタイマーが走っていない時に発動→animationが始まっていたらresumeでまだだったらstartが発火
+        //        ※timerStartedとanimeStartedをごっちゃにしない
         if !isAnimationStarted {
             startAnimation()
         } else {
@@ -131,17 +131,18 @@ class ViewController: UIViewController, CAAnimationDelegate {
     
     func startAnimation(){
         resetAnimation() //内部的に一旦リセットしてanimationをスタートさせる
+        print("Start時: \(foreProgressLayer.convertTime(CACurrentMediaTime(), from: nil).stringFromTimeInterval())")
         foreProgressLayer.strokeEnd = 0.0 //0からスタート
         animatation.keyPath = "strokeEnd"
         animatation.fromValue = 0
         animatation.toValue = 1 //0から1
         animatation.duration = 60
         animatation.delegate = self //追記。これがないとanimationDidStop内の関数(0になったらforeProgressLayerを消すやつ)が発火しない
-//        ここから
+        //        ここから
         animatation.isRemovedOnCompletion = false
         animatation.isAdditive = true
         animatation.fillMode = CAMediaTimingFillMode.forwards
-//        ここまでよくわからん
+        //        ここまでよくわからん
         foreProgressLayer.add(animatation, forKey: "strokeEnd")
         isAnimationStarted = true
     }
@@ -156,16 +157,20 @@ class ViewController: UIViewController, CAAnimationDelegate {
     
     func pauseAnimation(){ //タイマー走っている&&start(pause)が押されて発動
         let pausedTime = foreProgressLayer.convertTime(CACurrentMediaTime(), from: nil)
+        print("pauseAnimation: \(pausedTime.stringFromTimeInterval())") //この値が2行下で代入後、アニメーションが再スタートした際に使われる
         foreProgressLayer.speed = 0.0 //0でないと赤い部分がなくなって再スタートでまた最初から赤がスタートする
         foreProgressLayer.timeOffset = pausedTime
     }
     
     func resumeAnimation(){ //Startを押した時にtimerは走っていない&&アニメはスタートしてる
         let pausedTime = foreProgressLayer.timeOffset // pauseAnimationでpausedTimeを代入したforeProgressLayer.timeOffset???
+        print("resumeAnimation: \(pausedTime.stringFromTimeInterval())")
         foreProgressLayer.speed = 1.0 //2.0だと再スタートした際に赤アニメーションが最初からになる
-        foreProgressLayer.timeOffset = 0.0 //?
+        foreProgressLayer.timeOffset = 0.0 //一旦リセットして次で再設定?
         foreProgressLayer.beginTime = 0.0//一旦リセットして次で再設定?
-        let timeSincePaused = foreProgressLayer.convertTime(CACurrentMediaTime(), from: nil) - pausedTime 
+        let timeSincePaused = foreProgressLayer.convertTime(CACurrentMediaTime(), from: nil) - pausedTime
+        print("引かれる方: \(foreProgressLayer.convertTime(CACurrentMediaTime(), from: nil).stringFromTimeInterval())")
+        print("timeSincePaused: \(timeSincePaused.stringFromTimeInterval())")
         foreProgressLayer.beginTime = timeSincePaused //停止したところからスタート?
     }
     
@@ -188,7 +193,24 @@ class ViewController: UIViewController, CAAnimationDelegate {
 extension Int{
     var degreesToRadians : CGFloat{
         return CGFloat(self) * .pi/180
-//        角度(CGFloat(self))を扇形の弧の長さに変換する拡張
-//        https://juken-mikata.net/how-to/mathematics/radian.html
+        //        角度(CGFloat(self))を扇形の弧の長さに変換する拡張
+        //        https://juken-mikata.net/how-to/mathematics/radian.html
+    }
+}
+
+//確認用
+extension TimeInterval{
+    
+    func stringFromTimeInterval() -> String {
+        
+        let time = NSInteger(self)
+        
+        let ms = Int((self.truncatingRemainder(dividingBy: 1)) * 1000)
+        let seconds = time % 60
+        let minutes = (time / 60) % 60
+        let hours = (time / 3600)
+        
+        return String(format: "%0.2d:%0.2d:%0.2d.%0.3d",hours,minutes,seconds,ms)
+        
     }
 }
